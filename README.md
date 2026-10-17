@@ -1,2 +1,0 @@
-# My-Recipe
-Recipe Storage
