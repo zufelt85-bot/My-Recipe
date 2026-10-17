@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#176b3a" />
+  <title>My Recipes</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand" role="button" tabindex="0" data-action="go-home" aria-label="Go to recipe library">
+      <span class="brand-icon" aria-hidden="true">👩‍🍳</span>
+      <div>
+        <h1>My Recipes</h1>
+        <p>Version 1.1.1</p>
+      </div>
+    </div>
+    <nav class="header-actions" aria-label="Main actions">
+      <button class="icon-button" data-action="open-shopping" title="Shopping list">🛒</button>
+      <button class="icon-button" data-action="open-settings" title="Settings">⚙️</button>
+    </nav>
+  </header>
+
+  <main class="app-shell">
+    <section id="libraryView" class="view active" aria-labelledby="libraryTitle">
+      <div class="library-toolbar">
+        <div>
+          <h2 id="libraryTitle">Recipe Library</h2>
+          <p id="recipeCountText" class="muted">0 recipes</p>
+        </div>
+        <button class="primary-button" data-action="open-add">＋ Add Recipe</button>
+      </div>
+
+      <div class="search-row">
+        <label class="search-box">
+          <span aria-hidden="true">🔎</span>
+          <input id="searchInput" type="search" placeholder="Search recipes or ingredients…" autocomplete="off" />
+        </label>
+        <button class="secondary-button" data-action="toggle-filters">Filter & Sort</button>
+      </div>
+
+      <div id="quickFilters" class="chip-row" aria-label="Quick filters">
+        <button class="filter-chip active" data-quick-filter="all">All</button>
+        <button class="filter-chip" data-quick-filter="favorites">★ Favorites</button>
+        <button class="filter-chip" data-quick-filter="make-again">Make Again</button>
+      </div>
+
+      <aside id="filterPanel" class="filter-panel hidden" aria-label="Filters and sorting">
+        <div class="filter-grid">
+          <label>
+            Category
+            <select id="categoryFilter"><option value="">All categories</option></select>
+          </label>
+          <label>
+            Tag
+            <select id="tagFilter"><option value="">All tags</option></select>
+          </label>
+          <label>
+            Sort by
+            <select id="sortSelect">
+              <option value="name">Name (A–Z)</option>
+              <option value="newest">Newest added</option>
+              <option value="rating">Highest rated</option>
+              <option value="recent">Recently cooked</option>
+            </select>
+          </label>
+        </div>
+        <button class="text-button" data-action="clear-filters">Clear filters</button>
+      </aside>
+
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">🍽️</div>
+        <h3>Your recipe box is empty</h3>
+        <p>Paste a recipe from ChatGPT or Gemini, or add one manually.</p>
+        <button class="primary-button" data-action="open-add">Add Your First Recipe</button>
+      </div>
+
+      <div id="recipeGrid" class="recipe-grid" aria-live="polite"></div>
+    </section>
+
+    <section id="recipeView" class="view" aria-labelledby="recipeTitle">
+      <button class="back-button" data-action="go-home">← Back to recipes</button>
+      <article id="recipeDetail" class="recipe-detail"></article>
+    </section>
+
+    <section id="shoppingView" class="view" aria-labelledby="shoppingTitle">
+      <div class="section-heading-row">
+        <div>
+          <button class="back-button" data-action="go-home">← Back to recipes</button>
+          <h2 id="shoppingTitle">Shopping List</h2>
+        </div>
+        <div class="inline-actions">
+          <button class="secondary-button" data-action="clear-checked-shopping">Clear Checked</button>
+          <button class="danger-button" data-action="clear-shopping">Clear List</button>
+        </div>
+      </div>
+      <div class="shopping-store-bar">
+        <label class="shopping-store-select">
+          Shopping at
+          <select id="shoppingStoreSelect">
+            <option value="">No store layout</option>
+          </select>
+        </label>
+        <button class="secondary-button" data-action="open-stores">Manage Stores</button>
+      </div>
+      <div id="shoppingList" class="shopping-list"></div>
+    </section>
+  </main>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden" data-action="close-modal"></div>
+
+  <section id="recipeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="recipeModalTitle">
+    <div class="modal-header">
+      <div>
+        <h2 id="recipeModalTitle">Add Recipe</h2>
+        <p class="muted">Paste from ChatGPT/Gemini or enter it manually.</p>
+      </div>
+      <button class="icon-button" data-action="close-modal" aria-label="Close">✕</button>
+    </div>
+
+    <div id="pasteImportBox" class="paste-import-box">
+      <label for="pasteRecipeText"><strong>Quick Paste Import</strong></label>
+      <textarea id="pasteRecipeText" rows="8" placeholder="Paste the full recipe here…"></textarea>
+      <div class="inline-actions wrap">
+        <button class="primary-button" data-action="parse-pasted-recipe">Parse Recipe</button>
+        <span class="muted small">You can review and fix every field before saving.</span>
+      </div>
+    </div>
+
+    <form id="recipeForm" novalidate>
+      <input type="hidden" id="recipeId" />
+      <div class="form-grid two-column">
+        <label>
+          Recipe name *
+          <input id="recipeName" required maxlength="120" />
+        </label>
+        <label>
+          Source
+          <input id="recipeSource" maxlength="200" placeholder="ChatGPT, Gemini, Grandma, website…" />
+        </label>
+        <label>
+          Original servings *
+          <select id="originalServings" required></select>
+        </label>
+        <label>
+          Category
+          <input id="recipeCategory" list="categorySuggestions" maxlength="60" placeholder="Dinner" />
+        </label>
+        <label>
+          Prep time
+          <input id="prepTime" maxlength="40" placeholder="15 min" />
+        </label>
+        <label>
+          Cook time
+          <input id="cookTime" maxlength="40" placeholder="30 min" />
+        </label>
+      </div>
+
+      <datalist id="categorySuggestions">
+        <option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Side Dish</option>
+        <option>Dessert</option><option>Slow Cooker</option><option>Grill</option><option>Soup</option><option>Salad</option>
+      </datalist>
+
+      <label>
+        Tags
+        <input id="recipeTags" maxlength="300" placeholder="Owen Approved, Quick, Date Night, Fall, Make Again" />
+        <span class="field-help">Separate tags with commas.</span>
+      </label>
+
+      <div class="photo-field">
+        <label>
+          Recipe photo
+          <input id="recipePhoto" type="file" accept="image/*" />
+        </label>
+        <button type="button" class="text-button" data-action="remove-photo">Remove photo</button>
+        <img id="photoPreview" class="photo-preview hidden" alt="Recipe preview" />
+      </div>
+
+      <fieldset>
+        <legend>Ingredients *</legend>
+        <div id="ingredientEditor" class="ingredient-editor"></div>
+        <button type="button" class="secondary-button" data-action="add-ingredient-row">＋ Add Ingredient</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Instructions *</legend>
+        <div id="instructionEditor" class="instruction-editor"></div>
+        <button type="button" class="secondary-button" data-action="add-instruction-row">＋ Add Step</button>
+      </fieldset>
+
+      <label>
+        Grocery Shopping List
+        <textarea id="recipeGroceryList" rows="8" placeholder="Paste or edit the realistic grocery shopping list from ChatGPT/Gemini…"></textarea>
+        <span class="field-help">This is the preferred source for what to buy. Recipe ingredients are still used to combine quantities across recipes.</span>
+      </label>
+
+      <label>
+        Notes
+        <textarea id="recipeNotes" rows="4" placeholder="Changes, substitutions, family feedback…"></textarea>
+      </label>
+
+      <div class="form-grid two-column compact-grid">
+        <label>
+          Rating
+          <select id="recipeRating">
+            <option value="0">Not rated</option>
+            <option value="1">★</option><option value="2">★★</option><option value="3">★★★</option>
+            <option value="4">★★★★</option><option value="5">★★★★★</option>
+          </select>
+        </label>
+        <label class="checkbox-label">
+          <input id="makeAgain" type="checkbox" />
+          <span>Would make again</span>
+        </label>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="secondary-button" data-action="close-modal">Cancel</button>
+        <button type="submit" class="primary-button">Save Recipe</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="settingsModal" class="modal small-modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-header">
+      <div>
+        <h2 id="settingsTitle">Settings</h2>
+        <p class="muted">Back up or restore your recipe collection.</p>
+      </div>
+      <button class="icon-button" data-action="close-modal" aria-label="Close">✕</button>
+    </div>
+    <div class="settings-stack">
+      <button class="primary-button full-width" data-action="export-recipes">⬇ Export All Recipes (Backup)</button>
+      <label class="secondary-button full-width file-button">
+        ⬆ Import Recipes (Restore)
+        <input id="importFile" type="file" accept="application/json,.json" hidden />
+      </label>
+      <button class="secondary-button full-width" data-action="open-stores">🏪 Manage Stores & Aisles</button>
+      <hr />
+      <label class="checkbox-label setting-row">
+        <span>Keep screen awake in Cook Mode when supported</span>
+        <input id="keepAwakeSetting" type="checkbox" />
+      </label>
+      <label class="checkbox-label setting-row">
+        <span>Confirm before deleting a recipe</span>
+        <input id="confirmDeleteSetting" type="checkbox" />
+      </label>
+      <div class="about-box">
+        <strong>My Recipes</strong>
+        <span>Version 1.1.1</span>
+        <span>Recipes are stored in this browser on this device.</span>
+      </div>
+    </div>
+  </section>
+
+
+  <section id="storeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="storeModalTitle">
+    <div class="modal-header">
+      <div>
+        <h2 id="storeModalTitle">My Stores</h2>
+        <p class="muted">Save each store's aisle order so your shopping list follows the way you walk the store.</p>
+      </div>
+      <button class="icon-button" data-action="close-modal" aria-label="Close">✕</button>
+    </div>
+    <div class="inline-actions wrap store-toolbar">
+      <button class="primary-button" data-action="add-store">＋ Add Store</button>
+    </div>
+    <div id="storeList" class="store-list"></div>
+  </section>
+
+  <section id="storeEditorModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="storeEditorTitle">
+    <div class="modal-header">
+      <div>
+        <button class="back-button compact-back" data-action="back-to-stores">← Back to stores</button>
+        <h2 id="storeEditorTitle">Store Layout</h2>
+        <p class="muted">Add departments and aisles in the order you normally walk them.</p>
+      </div>
+      <button class="icon-button" data-action="close-modal" aria-label="Close">✕</button>
+    </div>
+    <form id="storeForm" novalidate>
+      <input type="hidden" id="storeId" />
+      <label>
+        Store name *
+        <input id="storeName" maxlength="100" placeholder="Kroger, Walmart, Commissary…" required />
+      </label>
+      <div class="modal-footer store-save-row">
+        <button type="button" id="deleteStoreButton" class="danger-button" data-action="delete-store">Delete Store</button>
+        <button type="submit" class="primary-button">Save Store</button>
+      </div>
+    </form>
+    <hr />
+    <div class="section-heading-row aisle-heading-row">
+      <div>
+        <h3>Aisles & Departments</h3>
+        <p class="muted small">Photos are optional. Add the categories shown on the sign so items can be matched automatically.</p>
+      </div>
+      <button class="secondary-button" data-action="add-aisle">＋ Add Aisle</button>
+    </div>
+    <div id="aisleList" class="aisle-list"></div>
+  </section>
+
+  <section id="aisleModal" class="modal small-modal hidden" role="dialog" aria-modal="true" aria-labelledby="aisleModalTitle">
+    <div class="modal-header">
+      <div>
+        <h2 id="aisleModalTitle">Add Aisle / Department</h2>
+        <p class="muted">Take a picture of the aisle sign or choose one you already saved, then confirm the aisle name and categories.</p>
+      </div>
+      <button class="icon-button" data-action="close-modal" aria-label="Close">✕</button>
+    </div>
+    <form id="aisleForm" novalidate>
+      <input type="hidden" id="aisleId" />
+      <label>
+        Aisle / department name *
+        <input id="aisleName" maxlength="100" placeholder="Produce, Aisle 5, Dairy…" required />
+      </label>
+      <label>
+        Categories or items on this aisle
+        <textarea id="aisleCategories" rows="6" placeholder="Canned soup
+Canned vegetables
+Pasta
+Rice"></textarea>
+        <span class="field-help">One per line or separated by commas.</span>
+      </label>
+      <div class="photo-field">
+        <span class="photo-field-label">Aisle sign photo</span>
+        <div class="aisle-photo-actions">
+          <label class="secondary-button file-button photo-source-button">
+            📷 Take Photo
+            <input id="aisleCameraPhoto" type="file" accept="image/*" capture="environment" hidden />
+          </label>
+          <label class="secondary-button file-button photo-source-button">
+            🖼️ Choose Existing Photo
+            <input id="aisleGalleryPhoto" type="file" accept="image/*" hidden />
+          </label>
+        </div>
+        <button type="button" class="text-button" data-action="remove-aisle-photo">Remove photo</button>
+        <img id="aislePhotoPreview" class="photo-preview hidden" alt="Aisle sign preview" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="secondary-button" data-action="back-to-store-editor">Cancel</button>
+        <button type="submit" class="primary-button">Save Aisle</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="assignLocationModal" class="modal small-modal hidden" role="dialog" aria-modal="true" aria-labelledby="assignLocationTitle">
+    <div class="modal-header">
+      <div>
+        <h2 id="assignLocationTitle">Assign Item Location</h2>
+        <p id="assignLocationItemName" class="muted"></p>
+      </div>
+      <button class="icon-button" data-action="close-modal" aria-label="Close">✕</button>
+    </div>
+    <form id="assignLocationForm" novalidate>
+      <input type="hidden" id="assignShoppingItemId" />
+      <label>
+        Aisle / Department
+        <select id="assignAisleSelect" required></select>
+      </label>
+      <label class="checkbox-label">
+        <input id="rememberItemLocation" type="checkbox" checked />
+        <span>Remember this item location for future shopping lists at this store</span>
+      </label>
+      <div class="modal-footer">
+        <button type="button" class="secondary-button" data-action="close-modal">Cancel</button>
+        <button type="submit" class="primary-button">Save Location</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="cookModal" class="modal cook-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cookTitle">
+    <div class="modal-header">
+      <div>
+        <h2 id="cookTitle">Cook Mode</h2>
+        <p id="cookProgressText" class="muted"></p>
+      </div>
+      <button class="icon-button" data-action="close-cook-mode" aria-label="Close">✕</button>
+    </div>
+    <div id="cookStepContent" class="cook-step-content"></div>
+    <div class="cook-controls">
+      <button class="secondary-button" data-action="cook-prev">← Previous</button>
+      <button class="primary-button" data-action="cook-complete">✓ Mark Step Complete</button>
+      <button class="secondary-button" data-action="cook-next">Next →</button>
+    </div>
+  </section>
+
+  <template id="ingredientRowTemplate">
+    <div class="ingredient-row">
+      <input class="ingredient-qty" inputmode="decimal" placeholder="Qty" aria-label="Quantity" />
+      <input class="ingredient-unit" placeholder="Unit" aria-label="Unit" />
+      <input class="ingredient-name" placeholder="Ingredient" aria-label="Ingredient" />
+      <button type="button" class="icon-button danger-icon" data-action="remove-editor-row" aria-label="Remove ingredient">✕</button>
+    </div>
+  </template>
+
+  <template id="instructionRowTemplate">
+    <div class="instruction-row">
+      <span class="step-number"></span>
+      <textarea class="instruction-text" rows="2" placeholder="Describe this step…"></textarea>
+      <button type="button" class="icon-button danger-icon" data-action="remove-editor-row" aria-label="Remove step">✕</button>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
